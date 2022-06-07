@@ -1,0 +1,61 @@
+{
+  "app": {
+    "service_name": "blockchain-api",
+    "port": 60060,
+    "allowed_domains": "*",
+    "path_log": "./log",
+    "log_review_interval": 60,
+    "register_log": true,
+    "rsa_private_key": "../rsa/app.rsa",
+    "rsa_public_key": "../rsa/app.rsa.pub",
+    "logger_http": true,
+    "max_transactions_block": 1,
+    "ttl_block": 1,
+    "difficulty": 5,
+    "fee": 0.01,
+    "wallet_main": "19884414-ce97-437d-92f3-7aa7f961f2c2",
+    "url_portal": "https://lion-blockchain.com/confimr-account",
+    "language" : "en",
+    "key_genesis": "f23a2919-3113-450c-b8cd-ea9d779a1379"
+  },
+  "dbS": {
+    "engine": "postgres",
+    "server": "ecapture-db-cluster-instance-1.cz34n4bxn4bs.us-east-1.rds.amazonaws.com",
+    "port": 5432,
+    "name": "blockchain_simba",
+    "user": "alnaptest",
+    "password": "alnaptest2020*",
+    "instance": "",
+    "is_secure": false
+  },
+  "db": {
+    "engine": "mongodb",
+    "server": "blion.vdwzv.mongodb.net",
+    "port": 0,
+    "name": "BLion_engine",
+    "user": "BLion",
+    "password": "BLion123",
+    "instance": "",
+    "is_secure": false
+  },
+  "template": {
+    "email_code": "send-code-confirm.gohtml",
+    "email_token": "send-token-confirm.gohtml",
+    "email_wallet_token": "send-token-confirm.gohtml"
+  },
+  "smtp": {
+    "port": 465,
+    "host": "smtp.gmail.com",
+    "email": "bjungleonlyone@gmail.com",
+    "password": "Passw0rd01*"
+  },
+  "s3": {
+    "bucket": "nexumtest"
+  },
+  "portal": {
+    "url": "http://bjungle.net.s3-website-us-east-1.amazonaws.com",
+    "activate_wallet": "/auth/validate/wallet/?token=",
+    "activate_account": "/auth/validate/user/?token="
+  }
+}
+

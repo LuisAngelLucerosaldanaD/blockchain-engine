@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package mine_proto;
+
+option go_package = "./mine_proto";
+
+message GetBlockToMineRequest {
+  int32 status = 1;
+}
+
+message GetBlockToMineResponse {
+  bool error = 1;
+  DataBlockMine data = 2;
+  int32 code = 3;
+  int32 type = 4;
+  string msg = 5;
+}
+
+message DataBlockMine{
+  int64                           id = 1;
+  bytes                           data = 2;
+  string                          timestamp = 3;
+  bytes                           prev_hash = 4;
+  int32                           difficulty = 5;
+}
+
+message RequestMineBlock {
+  int64 id = 1;
+  string hash = 2;
+  int64 nonce = 3;
+  int32 difficulty = 4;
+}
+message MineBlockResponse {
+  bool error = 1;
+  bool data = 2;
+  int32 code = 3;
+  int32 type = 4;
+  string msg = 5;
+}
+
+service mineBlockServicesBlocks {
+  rpc GetBlockToMine(GetBlockToMineRequest) returns (GetBlockToMineResponse){}
+  rpc MineBlock(RequestMineBlock) returns (MineBlockResponse){}
+}

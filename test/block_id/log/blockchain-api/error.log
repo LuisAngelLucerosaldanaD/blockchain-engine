@@ -1,0 +1,2 @@
+ERROR: 2022/05/30 20:27:58 C:/Users/Hp/Documents/go/src/gitlab.com/bjungle/blockchain-engine/internal/helpers/helpers.go:38: leyendo el archivo privado de firma: open ../rsa/app.rsa: The system cannot find the path specified.
+ERROR: 2022/05/30 20:27:58 C:/Users/Hp/Documents/go/src/gitlab.com/bjungle/blockchain-engine/internal/helpers/helpers.go:43: realizando el parse en auth RSA private: Invalid Key: Key must be a PEM encoded PKCS1 or PKCS8 key
