@@ -1,6 +1,6 @@
 {
   "app": {
-    "service_name": "blockchain-api",
+    "service_name": "blockchain-engine",
     "port": 60060,
     "allowed_domains": "*",
     "path_log": "./log",
@@ -16,17 +16,9 @@
     "wallet_main": "19884414-ce97-437d-92f3-7aa7f961f2c2",
     "url_portal": "https://lion-blockchain.com/confimr-account",
     "language" : "en",
-    "key_genesis": "f23a2919-3113-450c-b8cd-ea9d779a1379"
-  },
-  "dbS": {
-    "engine": "postgres",
-    "server": "ecapture-db-cluster-instance-1.cz34n4bxn4bs.us-east-1.rds.amazonaws.com",
-    "port": 5432,
-    "name": "blockchain_simba",
-    "user": "alnaptest",
-    "password": "alnaptest2020*",
-    "instance": "",
-    "is_secure": false
+    "key_genesis": "f23a2919-3113-450c-b8cd-ea9d779a1379",
+    "user_login": "",
+    "user_password": ""
   },
   "db": {
     "engine": "mongodb",
@@ -49,13 +41,16 @@
     "email": "bjungleonlyone@gmail.com",
     "password": "Passw0rd01*"
   },
-  "s3": {
-    "bucket": "nexumtest"
-  },
   "portal": {
     "url": "http://bjungle.net.s3-website-us-east-1.amazonaws.com",
     "activate_wallet": "/auth/validate/wallet/?token=",
     "activate_account": "/auth/validate/user/?token="
+  },
+  "auth_service": {
+    "port": 60062
+  },
+  "transactions_service": {
+    "port": 60061
   }
 }
 

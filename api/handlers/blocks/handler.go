@@ -7,6 +7,7 @@ import (
 	"bjungle/blockchain-engine/pkg/bc"
 	"context"
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 type HandlerBlocks struct {
@@ -14,14 +15,6 @@ type HandlerBlocks struct {
 	TxID string
 }
 
-// GetBlock godoc
-// @Summary GetBlock BJungle
-// @Description GetBlock BJungle
-// @Accept  json
-// @Produce  json
-// @Success 200 {object} responseGetAllBlock
-// @Success 202 {object} responseGetAllBlock
-// @Router /api/v1/blocks [get]
 func (h *HandlerBlocks) GetBlock(ctx context.Context, request *blocks_proto.GetAllBlockRequest) (*blocks_proto.GetAllBlockResponse, error) {
 	res := blocks_proto.GetAllBlockResponse{Error: true}
 	srvO1 := bc.NewServerBc(h.DBMg, nil, h.TxID)
@@ -61,14 +54,6 @@ func (h *HandlerBlocks) GetBlock(ctx context.Context, request *blocks_proto.GetA
 	return &res, nil
 }
 
-// GetBlockByID godoc
-// @Summary GetBlockByID BJungle
-// @Description GetBlockByID BJungle
-// @Accept  json
-// @Produce  json
-// @Success 200 {object} responseGetBlock
-// @Success 202 {object} responseGetBlock
-// @Router /api/v1/block [get]
 func (h *HandlerBlocks) GetBlockByID(ctx context.Context, request *blocks_proto.GetByIdRequest) (*blocks_proto.GetBlockByIDResponse, error) {
 	res := blocks_proto.GetBlockByIDResponse{Error: true}
 
@@ -102,4 +87,74 @@ func (h *HandlerBlocks) GetBlockByID(ctx context.Context, request *blocks_proto.
 	res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
 	res.Error = false
 	return &res, nil
+}
+
+func (h *HandlerBlocks) GetBlockUnCommit(ctx context.Context, commit *blocks_proto.RequestGetBlockUnCommit) (*blocks_proto.ResponseGetBlockUnCommit, error) {
+	res := &blocks_proto.ResponseGetBlockUnCommit{Error: true}
+	srvBc := bc.NewServerBc(h.DBMg, nil, h.TxID)
+
+	bks, err := srvBc.SrvBlocksTmp.GetBlockUnCommit()
+	if err != nil {
+		logger.Error.Printf("couldn't get block un commit: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	res.Error = false
+	res.Data = &blocks_proto.BlockTemp{
+		Id:        bks.ID,
+		Status:    int32(bks.Status),
+		Timestamp: bks.Timestamp.String(),
+		CreatedAt: bks.CreatedAt.String(),
+		UpdatedAt: bks.UpdatedAt.String(),
+	}
+
+	res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
+	return res, nil
+}
+
+func (h *HandlerBlocks) CreateBlockTemp(ctx context.Context, blockTemp *blocks_proto.RequestCreateBlockTemp) (*blocks_proto.ResponseCreateBlockTemp, error) {
+	res := &blocks_proto.ResponseCreateBlockTemp{Error: true}
+	srvBc := bc.NewServerBc(h.DBMg, nil, h.TxID)
+
+	newBk, code, err := srvBc.SrvBlocksTmp.CreateBlockTmp(1, time.Now())
+	if err != nil {
+		logger.Error.Printf("couldn't created block: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	res.Error = false
+	res.Data = &blocks_proto.BlockTemp{
+		Id:        newBk.ID,
+		Status:    int32(newBk.Status),
+		Timestamp: newBk.Timestamp.String(),
+		CreatedAt: newBk.CreatedAt.String(),
+		UpdatedAt: newBk.UpdatedAt.String(),
+	}
+	res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
+	return res, nil
+}
+
+func (h *HandlerBlocks) UpdateBlockTemp(ctx context.Context, blockTemp *blocks_proto.RequestUpdateBlockTemp) (*blocks_proto.ResponseUpdateBlockTemp, error) {
+	res := &blocks_proto.ResponseUpdateBlockTemp{Error: true}
+	srvBc := bc.NewServerBc(h.DBMg, nil, h.TxID)
+
+	bkTemp, code, err := srvBc.SrvBlocksTmp.UpdateBlockTmp(blockTemp.Id, int(blockTemp.Status))
+	if err != nil {
+		logger.Error.Printf("couldn't close block: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	res.Error = false
+	res.Data = &blocks_proto.BlockTemp{
+		Id:        bkTemp.ID,
+		Status:    int32(bkTemp.Status),
+		Timestamp: bkTemp.Timestamp.String(),
+		CreatedAt: bkTemp.CreatedAt.String(),
+		UpdatedAt: bkTemp.UpdatedAt.String(),
+	}
+	res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
+	return res, nil
 }

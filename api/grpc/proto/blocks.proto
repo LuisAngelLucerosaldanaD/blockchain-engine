@@ -45,7 +45,56 @@ message GetBlockByIDResponse {
 }
 
 
+message RequestGetBlockUnCommit {
+
+}
+
+message ResponseGetBlockUnCommit {
+  bool error = 1;
+  BlockTemp data = 2;
+  int32 code = 3;
+  int32 type = 4;
+  string msg = 5;
+}
+
+message BlockTemp {
+  int64  id = 1;
+  int32  status = 2;
+  string timestamp = 3;
+  string created_at = 4;
+  string updated_at = 5;
+}
+
+message RequestCreateBlockTemp {
+  int32 status = 1;
+  string timestamp = 2;
+}
+
+message ResponseCreateBlockTemp {
+  bool error = 1;
+  BlockTemp data = 2;
+  int32 code = 3;
+  int32 type = 4;
+  string msg = 5;
+}
+
+message RequestUpdateBlockTemp {
+  int64 id = 1;
+  int32 status = 2;
+}
+
+message responseUpdateBlockTemp {
+  bool error = 1;
+  BlockTemp data = 2;
+  int32 code = 3;
+  int32 type = 4;
+  string msg = 5;
+}
+
 service blockServicesBlocks {
   rpc GetBlock(GetAllBlockRequest) returns (GetAllBlockResponse){}
   rpc GetBlockByID(GetByIdRequest) returns (GetBlockByIDResponse){}
+  rpc GetBlockUnCommit(RequestGetBlockUnCommit) returns (ResponseGetBlockUnCommit){}
+  rpc CreateBlockTemp(RequestCreateBlockTemp) returns (ResponseCreateBlockTemp){}
+  rpc UpdateBlockTemp(RequestUpdateBlockTemp) returns (responseUpdateBlockTemp){}
 }

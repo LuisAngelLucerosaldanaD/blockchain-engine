@@ -13,13 +13,15 @@ var (
 )
 
 type configuration struct {
-	App      App      `json:"app"`
-	DB       DB       `json:"db"`
-	Template Template `json:"template"`
-	Smtp     Smtp     `json:"smtp"`
-	SendGrid SendGrid `json:"send_grid"`
-	Files    Files    `json:"files"`
-	Portal   Portal   `json:"portal"`
+	App                 App                 `json:"app"`
+	DB                  DB                  `json:"db"`
+	Template            Template            `json:"template"`
+	Smtp                Smtp                `json:"smtp"`
+	SendGrid            SendGrid            `json:"send_grid"`
+	Files               Files               `json:"files"`
+	Portal              Portal              `json:"portal"`
+	AuthService         AuthService         `json:"auth_service"`
+	TransactionsService TransactionsService `json:"transactions_service"`
 }
 
 type App struct {
@@ -40,6 +42,8 @@ type App struct {
 	UrlPortal            string  `json:"url_portal"`
 	Language             string  `json:"language"`
 	KeyGenesis           string  `json:"key_genesis"`
+	UserLogin            string  `json:"user_login"`
+	UserPassword         string  `json:"user_password"`
 }
 
 type Template struct {
@@ -86,6 +90,14 @@ type Portal struct {
 	Url             string `json:"url"`
 	ActivateWallet  string `json:"activate_wallet"`
 	ActivateAccount string `json:"activate_account"`
+}
+
+type AuthService struct {
+	Port string `json:"port"`
+}
+
+type TransactionsService struct {
+	Port string `json:"port"`
 }
 
 func NewConfiguration() *configuration {

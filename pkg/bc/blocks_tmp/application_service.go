@@ -16,7 +16,6 @@ type PortsServerBlockTmp interface {
 	GetAllBlockTmp() ([]*BlockTmp, error)
 	GetBlockUnCommit() (*BlockTmp, error)
 	GetBlockTwoCommit() (*BlockTmp, error)
-	/*MustCloseBlock(lifeBlock time.Time, block int64) bool*/
 }
 
 type service struct {
@@ -103,23 +102,3 @@ func (s *service) GetBlockUnCommit() (*BlockTmp, error) {
 func (s *service) GetBlockTwoCommit() (*BlockTmp, error) {
 	return s.repository.getBlockTwoCommit()
 }
-
-/*func (s *service) MustCloseBlock(TtlBlock time.Time, block int64) bool {
-	c := env.NewConfiguration()
-	transactions := s.repository.GetCountTransactionByID(block)
-
-	if transactions == 0 {
-		return false
-	}
-
-	if transactions >= int64(c.App.MaxTransactionsBlock) {
-		return true
-	}
-
-	lifeBlock := time.Now().Sub(TtlBlock).Seconds()
-
-	if int(lifeBlock) > (c.App.TtlBlock * 1000) {
-		return true
-	}
-	return false
-}*/

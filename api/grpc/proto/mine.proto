@@ -38,7 +38,34 @@ message MineBlockResponse {
   string msg = 5;
 }
 
+message RequestGenerateGenesis {
+  string key_genesis = 1;
+  string password = 2;
+  string nickname = 3;
+  string email = 4;
+  double tokens_emmit = 5;
+  int32  wallets_emmit = 6;
+}
+
+message ResponseGenerateGenesis {
+  bool   error = 1;
+  Data   data = 2;
+  int32  code = 3;
+  int32  type = 4;
+  string msg = 5;
+}
+
+message Data {
+  string   user_id = 1;
+  repeated WalletMain wallets_main = 2;
+}
+message WalletMain {
+  string id = 1;
+  string mnemonic = 2;
+}
+
 service mineBlockServicesBlocks {
   rpc GetBlockToMine(GetBlockToMineRequest) returns (GetBlockToMineResponse){}
   rpc MineBlock(RequestMineBlock) returns (MineBlockResponse){}
+  rpc GenerateBlockGenesis(RequestGenerateGenesis) returns (ResponseGenerateGenesis){}
 }
