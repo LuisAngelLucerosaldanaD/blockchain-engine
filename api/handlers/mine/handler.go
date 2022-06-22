@@ -16,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -179,7 +180,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 
 	clientAuth := auth_proto.NewAuthServicesUsersClient(connAuth)
 
-	resLogin, err := clientAuth.Login(context.Background(), &auth_proto.LoginRequest{
+	resLogin, err := clientAuth.Login(ctx, &auth_proto.LoginRequest{
 		Email:    nil,
 		Nickname: &e.App.UserLogin,
 		Password: e.App.UserPassword,
@@ -212,9 +213,9 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 		Name:          "BJungle",
 		Lastname:      "BJungle",
 		IdType:        6,
-		IdNumber:      "75840236",
+		IdNumber:      "75840278",
 		Cellphone:     "+57310000000",
-		BirthDate:     time.Now().String(),
+		BirthDate:     time.Now().Format("2006-01-02T15:04:05.000Z"),
 	})
 	if err != nil {
 		logger.Error.Printf("error creando usuario: %s", err)
@@ -246,7 +247,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 	var walletsMains []*mine_proto.WalletMain
 
 	for i := 0; i < int(request.WalletsEmmit); i++ {
-		resWallet, err := clientWallet.CreateWalletBySystem(ctx, &wallet_proto.RqCreateWalletBySystem{})
+		resWallet, err := clientWallet.CreateWalletBySystem(ctx, &wallet_proto.RqCreateWalletBySystem{IdentityNumber: user.IdNumber})
 		if err != nil {
 			logger.Error.Printf("error creando wallet: %s", err)
 			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
@@ -267,7 +268,12 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 
 		wallet := resWallet.Data
 
-		resAccount, err := clientAccount.CreateAccounting(ctx, &accounting_proto.RequestCreateAccounting{})
+		resAccount, err := clientAccount.CreateAccounting(ctx, &accounting_proto.RequestCreateAccounting{
+			Id:       uuid.New().String(),
+			IdWallet: wallet.Id,
+			Amount:   0,
+			IdUser:   user.ID,
+		})
 		if err != nil {
 			logger.Error.Printf("error creando cuenta: %s", err)
 			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
@@ -308,35 +314,13 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 			return res, fmt.Errorf(resUserWallet.Msg)
 		}
 
-		resTxt, err := clientTxt.CreateTransaction(ctx, &transactions_proto.RequestCreateTransaction{
-			From:   request.KeyGenesis,
-			To:     wallet.Id,
-			Amount: request.TokensEmmit,
-			TypeId: 18,
-			Data: &transactions_proto.Data{
-				Category:       "main",
-				IdentityNumber: "75840236",
-				Files:          []*transactions_proto.File{},
-				Name:           0,
-				Description:    "Emmit tokes to main wallet",
-				Identifiers: []*transactions_proto.Identifier{
-					{
-						Name: "Tokens Emmit",
-						Attributes: []*transactions_proto.Attribute{
-							{
-								Id:    1,
-								Name:  "walletID",
-								Value: wallet.Id,
-							},
-							{
-								Id:    2,
-								Name:  "tokens",
-								Value: fmt.Sprintf("%f", request.TokensEmmit),
-							},
-						},
-					},
-				},
-			},
+		resTxt, err := clientTxt.CreateTransactionBySystem(ctx, &transactions_proto.RqCreateTransactionBySystem{
+			WalletFrom: request.KeyGenesis,
+			WalletTo:   wallet.Id,
+			Amount:     request.TokensEmmit,
+			TypeId:     18,
+			Data:       fmt.Sprintf(dataJson(), wallet.Id, request.TokensEmmit),
+			BlockId:    bkTemp.ID,
 		})
 		if err != nil {
 			logger.Error.Printf("error creando transaccion: %s", err)
@@ -438,4 +422,27 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 	}
 	res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
 	return res, nil
+}
+
+func dataJson() string {
+	return `{
+        "files": [],
+        "name": "Genesis",
+        "description": "Emmit tokes to main wallet",
+        "entities": [
+            {
+                "name":   "Tokens Emmit",
+                "attributes": [
+                    {
+                        "name": "walletID",
+                        "value": "%s"
+                    },
+                    {
+                        "name": "tokens",
+                        "value": "%f"
+                    }
+                ]
+            }
+        ]
+    }`
 }

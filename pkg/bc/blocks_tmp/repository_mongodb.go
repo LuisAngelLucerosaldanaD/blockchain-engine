@@ -35,7 +35,15 @@ func (mg mongodb) create(m *BlockTmp) error {
 	collection := connDB.Collection(modelCollection)
 	m.CreatedAt = time.Now()
 	m.UpdatedAt = time.Now()
-	_, err := collection.InsertOne(context.TODO(), &m)
+
+	nBlocks, err := collection.CountDocuments(context.TODO(), bson.D{{}})
+	if err != nil {
+		logger.Error.Printf("Error creando el block, no id value, error: %v", err)
+		return err
+	}
+
+	m.ID = nBlocks + 1
+	_, err = collection.InsertOne(context.TODO(), &m)
 	if err != nil {
 		logger.Error.Printf("Error creando el bloque temporal, error: %v", err)
 		return err

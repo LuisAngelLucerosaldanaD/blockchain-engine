@@ -3,6 +3,7 @@ package interceptor
 import (
 	"bjungle/blockchain-engine/internal/env"
 	"bjungle/blockchain-engine/internal/logger"
+	"bjungle/blockchain-engine/internal/models"
 	"crypto/rsa"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
@@ -31,8 +32,8 @@ func init() {
 // UserClaims is a custom JWT claims that contains some user's information
 type UserClaims struct {
 	jwt.StandardClaims
-	User string `json:"user"`
-	Role int    `json:"role"`
+	User models.User `json:"user"`
+	Role int         `json:"role"`
 }
 
 // Verify verifies the access token string and return a user claim if the token is valid

@@ -1,6 +1,6 @@
 {
   "app": {
-    "service_name": "blockchain-engine",
+    "service_name": "blockchain-api",
     "port": 60060,
     "allowed_domains": "*",
     "path_log": "./log",
