@@ -5,6 +5,7 @@ import (
 	"bjungle/blockchain-engine/internal/db"
 	pb "bjungle/blockchain-engine/internal/grpc/blocks_proto"
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -12,6 +13,7 @@ import (
 	"log"
 	"net"
 	"testing"
+	"time"
 )
 
 const bufSize = 1024 * 1024
@@ -44,12 +46,12 @@ func TestGetAllBlocks(t *testing.T) {
 	}
 	defer conn.Close()
 	client := pb.NewBlockServicesBlocksClient(conn)
-	resp, err := client.GetBlock(ctx, &pb.GetAllBlockRequest{
-		Limit:  10,
-		Offset: 0,
-	})
+	resp, err := client.GetBlockUnCommit(ctx, &pb.RequestGetBlockUnCommit{})
 	if err != nil {
 		t.Fatalf("Get all blocks failed, error: %v", err)
 	}
+	layout := "2006-01-02 15:04:05.999999999 -0700 MST"
+	ti, _ := time.Parse(layout, resp.Data.Timestamp)
+	fmt.Println(ti)
 	log.Printf("Response: %+v", resp)
 }

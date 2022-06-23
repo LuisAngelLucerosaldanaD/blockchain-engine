@@ -90,7 +90,7 @@ func (h *HandlerBlocks) GetBlockByID(ctx context.Context, request *blocks_proto.
 }
 
 func (h *HandlerBlocks) GetBlockUnCommit(ctx context.Context, commit *blocks_proto.RequestGetBlockUnCommit) (*blocks_proto.ResponseGetBlockUnCommit, error) {
-	res := &blocks_proto.ResponseGetBlockUnCommit{Error: true}
+	res := &blocks_proto.ResponseGetBlockUnCommit{Error: true, Data: nil}
 	srvBc := bc.NewServerBc(h.DBMg, nil, h.TxID)
 
 	bks, err := srvBc.SrvBlocksTmp.GetBlockUnCommit()
@@ -100,15 +100,17 @@ func (h *HandlerBlocks) GetBlockUnCommit(ctx context.Context, commit *blocks_pro
 		return res, err
 	}
 
-	res.Error = false
-	res.Data = &blocks_proto.BlockTemp{
-		Id:        bks.ID,
-		Status:    int32(bks.Status),
-		Timestamp: bks.Timestamp.String(),
-		CreatedAt: bks.CreatedAt.String(),
-		UpdatedAt: bks.UpdatedAt.String(),
+	if bks != nil {
+		res.Data = &blocks_proto.BlockTemp{
+			Id:        bks.ID,
+			Status:    int32(bks.Status),
+			Timestamp: bks.Timestamp.String(),
+			CreatedAt: bks.CreatedAt.String(),
+			UpdatedAt: bks.UpdatedAt.String(),
+		}
 	}
 
+	res.Error = false
 	res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
 	return res, nil
 }
