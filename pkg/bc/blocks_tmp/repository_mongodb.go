@@ -56,6 +56,7 @@ func (mg mongodb) update(m *BlockTmp) error {
 	collection := connDB.Collection(modelCollection)
 
 	block, err := mg.getByID(m.ID)
+	m.Timestamp = block.Timestamp
 	m.CreatedAt = block.CreatedAt
 	m.UpdatedAt = time.Now()
 	filter := bson.D{{"_id", m.ID}}
