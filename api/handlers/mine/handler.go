@@ -3,7 +3,6 @@ package mine
 import (
 	"bjungle/blockchain-engine/internal/env"
 	"bjungle/blockchain-engine/internal/grpc/accounting_proto"
-	"bjungle/blockchain-engine/internal/grpc/auth_proto"
 	"bjungle/blockchain-engine/internal/grpc/mine_proto"
 	"bjungle/blockchain-engine/internal/grpc/transactions_proto"
 	"bjungle/blockchain-engine/internal/grpc/users_proto"
@@ -51,17 +50,6 @@ func (h *HandlerMine) GetBlockToMine(ctx context.Context, request *mine_proto.Ge
 		return &res, fmt.Errorf("couldn't get block")
 	}
 
-	//TODO get transactions by block id of api transactions - block mine
-
-	/*trs, err := srvO1.SrvTransactions.GetTransactionsByBlockID(bk.ID)
-	if err != nil {
-		logger.Error.Printf("couldn't get transactions by block id: %v", err)
-		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-		return c.Status(http.StatusAccepted).JSON(res)
-	}*/
-
-	/*rs, _ := json.Marshal(trs)*/
-
 	hash, err := srvO1.SrvBlocks.GetHashPrevBlock()
 	if err != nil {
 		logger.Error.Printf("couldn't get hash prev block: %v", err)
@@ -71,9 +59,8 @@ func (h *HandlerMine) GetBlockToMine(ctx context.Context, request *mine_proto.Ge
 
 	hashTemp := []byte(hash)
 	dataBk := mine_proto.DataBlockMine{
-		Id:        bk.ID,
-		Timestamp: bk.Timestamp.String(),
-		/*Data:       ,*/
+		Id:         bk.ID,
+		Timestamp:  bk.Timestamp.String(),
 		PrevHash:   hashTemp,
 		Difficulty: int32(e.App.Difficulty),
 	}
@@ -85,58 +72,88 @@ func (h *HandlerMine) GetBlockToMine(ctx context.Context, request *mine_proto.Ge
 }
 
 func (h *HandlerMine) MineBlock(ctx context.Context, block *mine_proto.RequestMineBlock) (*mine_proto.MineBlockResponse, error) {
-	res := mine_proto.MineBlockResponse{Error: true}
+	res := &mine_proto.MineBlockResponse{Error: true}
+	e := env.NewConfiguration()
 	u, err := helpers.GetUserContextV2(ctx)
 	if err != nil {
 		logger.Error.Printf("couldn't get token user, error: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
-		return &res, err
+		return res, err
 	}
+
+	connTxt, err := grpc.Dial(e.TransactionsService.Port, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Error.Printf("error conectando con el servicio de transacciones: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+	defer connTxt.Close()
+
+	clientTxt := transactions_proto.NewTransactionsServicesClient(connTxt)
+
+	token, err := helpers.GetTokenFromContext(ctx)
+	if err != nil {
+		logger.Error.Printf("error de authenticación: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	ctx = grpcMetadata.AppendToOutgoingContext(ctx, "authorization", token)
 
 	srO1 := bc.NewServerBc(h.DBMg, nil, h.TxID)
 	bk, code, err := srO1.SrvBlocksTmp.GetBlockTmpByID(block.Id)
 	if err != nil {
 		logger.Error.Printf("couldn't bind model requestMineBlock: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
-		return &res, err
+		return res, err
 	}
 
 	hs, err := srO1.SrvBlocks.GetHashPrevBlock()
 	if err != nil {
 		logger.Error.Printf("couldn't bind model requestMineBlock: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-		return &res, err
+		return res, err
 	}
 
-	// TODO get transactions by block id of api transactions - mine block
-	/*ts, err := srO1.SrvTransactions.GetTransactionsByBlockID(m.ID)
+	resTxt, err := clientTxt.GetTransactionsByBlockId(ctx, &transactions_proto.RqGetTransactionByBlock{BlockId: block.Id})
 	if err != nil {
 		logger.Error.Printf("couldn't get transactions by block id: %v", err)
-		res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
-		return c.Status(http.StatusAccepted).JSON(res)
+		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
+		return res, err
 	}
 
-	tsBytes, _ := json.Marshal(ts)*/
+	if resTxt == nil {
+		logger.Error.Printf("couldn't get transactions by block id: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
+		return res, fmt.Errorf("couldn't get transactions by block id")
+	}
 
-	//TODO review minedBY
-	_, code, err = srO1.SrvBlocks.CreateBlock(block.Id, "", block.Nonce, int(block.Difficulty), u.ID, time.Now(), bk.Timestamp, block.Hash, hs)
+	if resTxt.Error {
+		logger.Error.Printf(resTxt.Msg)
+		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
+		return res, fmt.Errorf(resTxt.Msg)
+	}
+
+	tsBytes, _ := json.Marshal(resTxt.Data)
+
+	_, code, err = srO1.SrvBlocks.CreateBlock(block.Id, string(tsBytes), block.Nonce, int(block.Difficulty), u.ID, time.Now(), bk.Timestamp, block.Hash, hs)
 	if err != nil {
 		logger.Error.Printf("couldn't CreateBlock: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
-		return &res, err
+		return res, err
 	}
 
 	_, code, err = srO1.SrvBlocksTmp.UpdateBlockTmp(block.Id, 3)
 	if err != nil {
 		logger.Error.Printf("couldn't update status block temp: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
-		return &res, err
+		return res, err
 	}
 
 	res.Data = true
 	res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
 	res.Error = false
-	return &res, nil
+	return res, nil
 }
 
 func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_proto.RequestGenerateGenesis) (*mine_proto.ResponseGenerateGenesis, error) {
@@ -175,35 +192,16 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 	clientWallet := wallet_proto.NewWalletServicesWalletClient(connAuth)
 	clientUser := users_proto.NewAuthServicesUsersClient(connAuth)
 	clientAccount := accounting_proto.NewAccountingServicesAccountingClient(connAuth)
-
 	clientTxt := transactions_proto.NewTransactionsServicesClient(connTxt)
 
-	clientAuth := auth_proto.NewAuthServicesUsersClient(connAuth)
-
-	resLogin, err := clientAuth.Login(ctx, &auth_proto.LoginRequest{
-		Email:    nil,
-		Nickname: &e.App.UserLogin,
-		Password: e.App.UserPassword,
-	})
+	token, err := helpers.GetTokenFromContext(ctx)
 	if err != nil {
-		logger.Error.Printf("No se pudo obtener el token de autenticacion: %s", err)
+		logger.Error.Printf("error de authenticación: %s", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
 		return res, err
 	}
 
-	if resLogin == nil {
-		logger.Error.Printf("No se pudo obtener el token de autenticacion")
-		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-		return res, fmt.Errorf("no se pudo obtener el token de autenticacion")
-	}
-
-	if resLogin.Error {
-		logger.Error.Printf(resLogin.Msg)
-		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-		return res, fmt.Errorf(resLogin.Msg)
-	}
-
-	ctx = grpcMetadata.AppendToOutgoingContext(ctx, "authorization", resLogin.Data.AccessToken)
+	ctx = grpcMetadata.AppendToOutgoingContext(ctx, "authorization", token)
 
 	resUSer, err := clientUser.CreateUserBySystem(ctx, &users_proto.RequestCreateUserBySystem{
 		Nickname:      request.Nickname,
@@ -272,7 +270,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 			Id:       uuid.New().String(),
 			IdWallet: wallet.Id,
 			Amount:   0,
-			IdUser:   user.ID,
+			IdUser:   user.Id,
 		})
 		if err != nil {
 			logger.Error.Printf("error creando cuenta: %s", err)
@@ -293,7 +291,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 		}
 
 		resUserWallet, err := clientUser.CreateUserWallet(ctx, &users_proto.RqCreateUserWallet{
-			UserId:   user.ID,
+			UserId:   user.Id,
 			WalletId: wallet.Id,
 		})
 		if err != nil {
@@ -343,7 +341,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 		resAmount, err := clientAccount.SetAmountToAccounting(ctx, &accounting_proto.RequestSetAmountToAccounting{
 			WalletId: wallet.Id,
 			Amount:   request.TokensEmmit,
-			IdUser:   user.ID,
+			IdUser:   user.Id,
 		})
 		if err != nil {
 			logger.Error.Printf("error asiganando los acais a la cuenta: %s", err)
@@ -401,7 +399,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 		res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
 		return res, err
 	}
-	_, code, err = srvBc.SrvBlocks.CreateBlock(bkTemp.ID, string(tsBytes), int64(nonce), e.App.Difficulty, user.ID, time.Now(), bkTemp.Timestamp, hs, "genesis")
+	_, code, err = srvBc.SrvBlocks.CreateBlock(bkTemp.ID, string(tsBytes), int64(nonce), e.App.Difficulty, user.Id, time.Now(), bkTemp.Timestamp, hs, "genesis")
 	if err != nil {
 		logger.Error.Printf("couldn't CreateBlock: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
@@ -417,7 +415,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 
 	res.Error = false
 	res.Data = &mine_proto.Data{
-		UserId:      user.ID,
+		UserId:      user.Id,
 		WalletsMain: walletsMains,
 	}
 	res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)

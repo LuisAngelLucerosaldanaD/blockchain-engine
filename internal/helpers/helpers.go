@@ -59,7 +59,7 @@ func GetUserContext(c *fiber.Ctx) *models.User {
 }
 
 func GetUserContextV2(ctx context.Context) (*models.User, error) {
-	tokenStr, err := getTokenFromContext(ctx)
+	tokenStr, err := GetTokenFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func GetUserContextV2(ctx context.Context) (*models.User, error) {
 	return nil, nil
 }
 
-func getTokenFromContext(ctx context.Context) (string, error) {
+func GetTokenFromContext(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return "", fmt.Errorf("ErrNoMetadataInContext")
