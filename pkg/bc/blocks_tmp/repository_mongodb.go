@@ -183,12 +183,12 @@ func (mg mongodb) getBlockTwoCommit() (*BlockTmp, error) {
 	findOptions.SetSort(bson.D{{"id", -1}})
 
 	err := collection.FindOne(context.TODO(), bson.D{{"status", 2}}, &findOptions).Decode(&mdl)
-	if err != mongo.ErrNoDocuments {
-		if err != nil {
-			logger.Error.Printf("Error trayendo el bloque con estado 2, error: %v", err)
-			return nil, err
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
 		}
-		return &mdl, nil
+		logger.Error.Printf("Error trayendo el bloque con estado 2, error: %v", err)
+		return nil, err
 	}
 	return &mdl, nil
 }

@@ -45,19 +45,19 @@ func (h *HandlerMine) GetBlockToMine(ctx context.Context, request *mine_proto.Ge
 	}
 
 	if bk == nil {
-		logger.Error.Printf("couldn't get block: %v", err)
-		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-		return &res, fmt.Errorf("couldn't get block")
+		res.Error = false
+		res.Code, res.Type, res.Msg = 29, 1, "No hay bloques disponibles a minar"
+		return &res, nil
 	}
 
-	hash, err := srvO1.SrvBlocks.GetHashPrevBlock()
+	hs, err := srvO1.SrvBlocks.GetHashPrevBlock()
 	if err != nil {
 		logger.Error.Printf("couldn't get hash prev block: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(94, h.DBMg, h.TxID)
 		return &res, err
 	}
 
-	hashTemp := []byte(hash)
+	hashTemp := []byte(hs)
 	dataBk := mine_proto.DataBlockMine{
 		Id:         bk.ID,
 		Timestamp:  bk.Timestamp.String(),
