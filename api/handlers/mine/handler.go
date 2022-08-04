@@ -71,15 +71,9 @@ func (h *HandlerMine) GetBlockToMine(ctx context.Context, request *mine_proto.Ge
 	return &res, nil
 }
 
-func (h *HandlerMine) MineBlock(ctx context.Context, block *mine_proto.RequestMineBlock) (*mine_proto.MineBlockResponse, error) {
+func (h *HandlerMine) MineBlock(ctx context.Context, request *mine_proto.RequestMineBlock) (*mine_proto.MineBlockResponse, error) {
 	res := &mine_proto.MineBlockResponse{Error: true}
 	e := env.NewConfiguration()
-	u, err := helpers.GetUserContextV2(ctx)
-	if err != nil {
-		logger.Error.Printf("couldn't get token user, error: %v", err)
-		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
-		return res, err
-	}
 
 	connTxt, err := grpc.Dial(e.TransactionsService.Port, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -101,7 +95,7 @@ func (h *HandlerMine) MineBlock(ctx context.Context, block *mine_proto.RequestMi
 	ctx = grpcMetadata.AppendToOutgoingContext(ctx, "authorization", token)
 
 	srO1 := bc.NewServerBc(h.DBMg, nil, h.TxID)
-	bk, code, err := srO1.SrvBlocksTmp.GetBlockTmpByID(block.Id)
+	bk, code, err := srO1.SrvBlocksTmp.GetBlockTmpByID(request.Id)
 	if err != nil {
 		logger.Error.Printf("couldn't bind model requestMineBlock: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
@@ -115,7 +109,7 @@ func (h *HandlerMine) MineBlock(ctx context.Context, block *mine_proto.RequestMi
 		return res, err
 	}
 
-	resTxt, err := clientTxt.GetTransactionsByBlockId(ctx, &transactions_proto.RqGetTransactionByBlock{BlockId: block.Id})
+	resTxt, err := clientTxt.GetTransactionsByBlockId(ctx, &transactions_proto.RqGetTransactionByBlock{BlockId: request.Id})
 	if err != nil {
 		logger.Error.Printf("couldn't get transactions by block id: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
@@ -136,14 +130,14 @@ func (h *HandlerMine) MineBlock(ctx context.Context, block *mine_proto.RequestMi
 
 	tsBytes, _ := json.Marshal(resTxt.Data)
 
-	_, code, err = srO1.SrvBlocks.CreateBlock(block.Id, string(tsBytes), block.Nonce, int(block.Difficulty), u.ID, time.Now(), bk.Timestamp, block.Hash, hs)
+	_, code, err = srO1.SrvBlocks.CreateBlock(request.Id, string(tsBytes), request.Nonce, int(request.Difficulty), request.MinerId, time.Now(), bk.Timestamp, request.Hash, hs)
 	if err != nil {
 		logger.Error.Printf("couldn't CreateBlock: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
 		return res, err
 	}
 
-	_, code, err = srO1.SrvBlocksTmp.UpdateBlockTmp(block.Id, 3)
+	_, code, err = srO1.SrvBlocksTmp.UpdateBlockTmp(request.Id, 3)
 	if err != nil {
 		logger.Error.Printf("couldn't update status block temp: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
