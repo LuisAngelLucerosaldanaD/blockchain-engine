@@ -59,7 +59,7 @@ func GetUserContext(c *fiber.Ctx) *models.User {
 }
 
 func GetUserContextV2(ctx context.Context) (*models.User, error) {
-	tokenStr, err := GetTokenFromContext(ctx)
+	tokenStr, err := GetTokenFromContext(ctx, "authorization")
 	if err != nil {
 		return nil, err
 	}
@@ -83,13 +83,13 @@ func GetUserContextV2(ctx context.Context) (*models.User, error) {
 	return nil, nil
 }
 
-func GetTokenFromContext(ctx context.Context) (string, error) {
+func GetTokenFromContext(ctx context.Context, key string) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return "", fmt.Errorf("ErrNoMetadataInContext")
 	}
 
-	token, ok := md["authorization"]
+	token, ok := md[key]
 	if !ok || len(token) == 0 {
 		return "", fmt.Errorf("ErrNoAuthorizationInMetadata")
 	}

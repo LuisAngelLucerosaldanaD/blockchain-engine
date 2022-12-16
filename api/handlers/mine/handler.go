@@ -1,6 +1,7 @@
 package mine
 
 import (
+	"bjungle/blockchain-engine/internal/ciphers"
 	"bjungle/blockchain-engine/internal/env"
 	"bjungle/blockchain-engine/internal/grpc/accounting_proto"
 	"bjungle/blockchain-engine/internal/grpc/mine_proto"
@@ -13,6 +14,7 @@ import (
 	"bjungle/blockchain-engine/internal/msg"
 	"bjungle/blockchain-engine/pkg/bc"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -83,16 +85,82 @@ func (h *HandlerMine) MineBlock(ctx context.Context, request *mine_proto.Request
 	}
 	defer connTxt.Close()
 
+	connAuth, err := grpc.Dial(e.AuthService.Port, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Error.Printf("error conectando con el servicio auth de blockchain: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+	defer connAuth.Close()
+
+	clientWallet := wallet_proto.NewWalletServicesWalletClient(connAuth)
 	clientTxt := transactions_proto.NewTransactionsServicesClient(connTxt)
 
-	token, err := helpers.GetTokenFromContext(ctx)
+	token, err := helpers.GetTokenFromContext(ctx, "authorization")
 	if err != nil {
-		logger.Error.Printf("error de authenticación: %s", err)
+		logger.Error.Printf("error de autenticación: %s", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
 		return res, err
 	}
 
 	ctx = grpcMetadata.AppendToOutgoingContext(ctx, "authorization", token)
+
+	sign, err := helpers.GetTokenFromContext(ctx, "sign")
+	if err != nil {
+		logger.Error.Printf("no se pudo obtener la firma de la petición: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	rqBytes, _ := json.Marshal(request)
+
+	rqHash := ciphers.StringToHashSha256(string(rqBytes))
+
+	walletFrom, err := clientWallet.GetWalletById(ctx, &wallet_proto.RequestGetWalletById{Id: request.MinerId})
+	if err != nil {
+		logger.Error.Printf("couldn't get wallets by id: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	if walletFrom == nil {
+		logger.Error.Printf("couldn't get wallets by id: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, fmt.Errorf("couldn't get wallet from by id")
+	}
+
+	if walletFrom.Error {
+		logger.Error.Printf(walletFrom.Msg)
+		res.Code, res.Type, res.Msg = msg.GetByCode(int(walletFrom.Code), h.DBMg, h.TxID)
+		return res, fmt.Errorf(walletFrom.Msg)
+	}
+
+	bSign, err := base64.StdEncoding.DecodeString(sign)
+	if err != nil {
+		logger.Error.Printf("no se pudo decodificar la firma: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	publicKey, err := ciphers.DecodePublic(walletFrom.Data.Public)
+	if err != nil {
+		logger.Error.Printf("La clave publica no es valida o esta corrupta: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	verifySign, err := ciphers.VerifySignWithEcdsa([]byte(rqHash), *publicKey, bSign)
+	if err != nil {
+		logger.Error.Printf("No se pudo validar la firma de la petición: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	if !verifySign {
+		logger.Error.Printf("La firma de la petición es invalida o esta corrupta: %v", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
 
 	srO1 := bc.NewServerBc(h.DBMg, nil, h.TxID)
 	bk, code, err := srO1.SrvBlocksTmp.GetBlockTmpByID(request.Id)
@@ -112,19 +180,19 @@ func (h *HandlerMine) MineBlock(ctx context.Context, request *mine_proto.Request
 	resTxt, err := clientTxt.GetTransactionsByBlockId(ctx, &transactions_proto.RqGetTransactionByBlock{BlockId: request.Id})
 	if err != nil {
 		logger.Error.Printf("couldn't get transactions by block id: %v", err)
-		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
+		res.Code, res.Type, res.Msg = msg.GetByCode(5, h.DBMg, h.TxID)
 		return res, err
 	}
 
 	if resTxt == nil {
-		logger.Error.Printf("couldn't get transactions by block id: %v", err)
-		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
+		logger.Error.Printf("couldn't get transactions by block id")
+		res.Code, res.Type, res.Msg = msg.GetByCode(5, h.DBMg, h.TxID)
 		return res, fmt.Errorf("couldn't get transactions by block id")
 	}
 
 	if resTxt.Error {
 		logger.Error.Printf(resTxt.Msg)
-		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
+		res.Code, res.Type, res.Msg = msg.GetByCode(int(resTxt.Code), h.DBMg, h.TxID)
 		return res, fmt.Errorf(resTxt.Msg)
 	}
 
@@ -188,7 +256,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 	clientAccount := accounting_proto.NewAccountingServicesAccountingClient(connAuth)
 	clientTxt := transactions_proto.NewTransactionsServicesClient(connTxt)
 
-	token, err := helpers.GetTokenFromContext(ctx)
+	token, err := helpers.GetTokenFromContext(ctx, "authorization")
 	if err != nil {
 		logger.Error.Printf("error de authenticación: %s", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
@@ -223,7 +291,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 
 	if resUSer.Error {
 		logger.Error.Printf(resUSer.Msg)
-		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		res.Code, res.Type, res.Msg = msg.GetByCode(int(resUSer.Code), h.DBMg, h.TxID)
 		return res, fmt.Errorf(resUSer.Msg)
 	}
 
@@ -242,19 +310,19 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 		resWallet, err := clientWallet.CreateWalletBySystem(ctx, &wallet_proto.RqCreateWalletBySystem{IdentityNumber: user.IdNumber})
 		if err != nil {
 			logger.Error.Printf("error creando wallet: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+			res.Code, res.Type, res.Msg = msg.GetByCode(3, h.DBMg, h.TxID)
 			return res, err
 		}
 
 		if resWallet == nil {
 			logger.Error.Printf("error creando wallet: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+			res.Code, res.Type, res.Msg = msg.GetByCode(3, h.DBMg, h.TxID)
 			return res, fmt.Errorf("error creando wallet")
 		}
 
 		if resWallet.Error {
 			logger.Error.Printf(resWallet.Msg)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+			res.Code, res.Type, res.Msg = msg.GetByCode(int(resWallet.Code), h.DBMg, h.TxID)
 			return res, fmt.Errorf(resWallet.Msg)
 		}
 
@@ -393,6 +461,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 		res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)
 		return res, err
 	}
+
 	_, code, err = srvBc.SrvBlocks.CreateBlock(bkTemp.ID, string(tsBytes), int64(nonce), e.App.Difficulty, user.Id, time.Now(), bkTemp.Timestamp, hs, "genesis")
 	if err != nil {
 		logger.Error.Printf("couldn't CreateBlock: %v", err)
@@ -418,7 +487,6 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 
 func dataJson() string {
 	return `{
-        "files": [],
         "name": "Genesis",
         "description": "Emmit tokes to main wallet",
         "entities": [

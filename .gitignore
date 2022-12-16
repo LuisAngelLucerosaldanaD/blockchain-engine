@@ -7,6 +7,7 @@
 *.dylib
 *.zip
 blockchain-transactions
+blockchain-engine
 
 
 # Test binary, build with `go test -c`

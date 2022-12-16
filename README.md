@@ -86,3 +86,7 @@ Para generar los archivos .proto ejecutar el siguiente comando:
 protoc -I api/grpc/proto --go_out=plugins=grpc:internal/grpc api/grpc/proto/*.proto
 ````
 
+# cross compilation
+* GOOS=linux  GOARCH=amd64 go build
+* GOOS=windows  GOARCH=amd64 go build
+
