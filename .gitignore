@@ -24,6 +24,7 @@ blockchain-engine
 # Variables de entorno
 .env
 config.json
+wallet_key.pem
 
 # Directorios usados por los IDE de jetbrains
 .idea/

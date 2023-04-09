@@ -9,17 +9,9 @@
     "rsa_private_key": "../rsa/app.rsa",
     "rsa_public_key": "../rsa/app.rsa.pub",
     "logger_http": true,
-    "max_transactions_block": 1,
-    "ttl_block": 1,
     "difficulty": 5,
-    "fee": 0.01,
-    "wallet_main": "19884414-ce97-437d-92f3-7aa7f961f2c2",
-    "url_portal": "https://lion-blockchain.com/confimr-account",
     "language" : "en",
-    "key_genesis": "f23a2919-3113-450c-b8cd-ea9d779a1379",
-    "user_login": "nexum",
-    "email_login": "root.nexum@nexum.co",
-    "user_password": "Nexum123"
+    "key_genesis": "f23a2919-3113-450c-b8cd-ea9d779a1379"
   },
   "db": {
     "engine": "mongodb",
@@ -30,22 +22,6 @@
     "password": "BLion123",
     "instance": "",
     "is_secure": false
-  },
-  "template": {
-    "email_code": "send-code-confirm.gohtml",
-    "email_token": "send-token-confirm.gohtml",
-    "email_wallet_token": "send-token-confirm.gohtml"
-  },
-  "smtp": {
-    "port": 465,
-    "host": "smtp.gmail.com",
-    "email": "bjungleonlyone@gmail.com",
-    "password": "Passw0rd01*"
-  },
-  "portal": {
-    "url": "http://bjungle.net.s3-website-us-east-1.amazonaws.com",
-    "activate_wallet": "/auth/validate/wallet/?token=",
-    "activate_account": "/auth/validate/user/?token="
   },
   "auth_service": {
     "port": ":60062"
