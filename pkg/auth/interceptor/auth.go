@@ -13,6 +13,7 @@ import (
 var routes = map[string]string{
 	"/mine_proto.mineBlockServicesBlocks/GenerateBlockGenesis": "/mine_proto.mineBlockServicesBlocks/GenerateBlockGenesis",
 	"/blocks_proto.blockServicesBlocks/GetBlock":               "/blocks_proto.blockServicesBlocks/GetBlock",
+	"/blocks_proto.blockServicesBlocks/GetBlockByID":           "/blocks_proto.blockServicesBlocks/GetBlockByID",
 }
 
 // AuthInterceptor is a server interceptor for authentication and authorization

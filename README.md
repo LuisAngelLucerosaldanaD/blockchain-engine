@@ -87,6 +87,13 @@ protoc -I api/grpc/proto --go_out=plugins=grpc:internal/grpc api/grpc/proto/*.pr
 ````
 
 # cross compilation
-* GOOS=linux  GOARCH=amd64 go build
-* GOOS=windows  GOARCH=amd64 go build
+
+### Para SO basados en LINUX
+````bash
+GOOS=linux  GOARCH=amd64 go build
+````
+### Para SO basados en WINDOWS
+````bash
+GOOS=windows  GOARCH=amd64 go build
+````
 

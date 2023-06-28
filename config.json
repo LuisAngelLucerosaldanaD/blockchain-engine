@@ -1,7 +1,7 @@
 {
   "app": {
     "service_name": "blockchain-engine",
-    "port": 60060,
+    "port": 5013,
     "allowed_domains": "*",
     "path_log": "./log",
     "log_review_interval": 60,
@@ -24,10 +24,9 @@
     "is_secure": false
   },
   "auth_service": {
-    "port": ":60062"
+    "port": ":5011"
   },
   "transactions_service": {
-    "port": ":60061"
+    "port": ":5014"
   }
 }
-
