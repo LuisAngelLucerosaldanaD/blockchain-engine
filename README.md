@@ -48,7 +48,7 @@ Este servicio presenta las siguientes limitaciones con respecto a sus funciones 
 ## Costos
 
 La escritura de bloques en la cadena de bloques tiene un costo que depende de la información que se escribe en el bloque además del smart contract.
-Dichos costos o aproximados se puden obtener de la siguiente en el simulador de la plagina de [BLion](https://www.bjungle.net).
+Dichos costos o aproximados se pueden obtener de la siguiente en el simulador de la plagina de [BLion](https://www.bjungle.net).
 
 ## Instalación y Ejecución
 Este servicio cuenta con un archivo ejecutable para los diferentes sistemas operativos,
@@ -82,8 +82,13 @@ chmod 777 blockchain-engine
 Tener en cuenta que para que el servicio se pueda ejecutar correctamente usted tiene que estar en modo superusuario (ROOT).
 
 Para generar los archivos .proto ejecutar el siguiente comando:
+* Para versiones anterioeres a protoc v1.27.1 se ejecuta este comando
 ````bash
-protoc -I api/grpc/proto --go_out=plugins=grpc:internal/grpc api/grpc/proto/*.proto
+protoc -I api/grpc/proto --go_out=internal/grpc api/grpc/proto/*.proto
+````
+* Para versiones superiores a protoc v1.27.1 se ejecuta este comando
+````bash
+protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=require_unimplemented_servers=false:. --go-grpc_opt=paths=source_relative api/grpc/proto/*.proto
 ````
 
 # cross compilation

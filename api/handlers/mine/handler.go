@@ -6,7 +6,6 @@ import (
 	"bjungle/blockchain-engine/internal/grpc/accounting_proto"
 	"bjungle/blockchain-engine/internal/grpc/mine_proto"
 	"bjungle/blockchain-engine/internal/grpc/transactions_proto"
-	"bjungle/blockchain-engine/internal/grpc/users_proto"
 	"bjungle/blockchain-engine/internal/grpc/wallet_proto"
 	"bjungle/blockchain-engine/internal/hash"
 	"bjungle/blockchain-engine/internal/helpers"
@@ -252,7 +251,6 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 	defer connTxt.Close()
 
 	clientWallet := wallet_proto.NewWalletServicesWalletClient(connAuth)
-	clientUser := users_proto.NewAuthServicesUsersClient(connAuth)
 	clientAccount := accounting_proto.NewAccountingServicesAccountingClient(connAuth)
 	clientTxt := transactions_proto.NewTransactionsServicesClient(connTxt)
 
@@ -265,38 +263,6 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 
 	ctx = grpcMetadata.AppendToOutgoingContext(ctx, "authorization", token)
 
-	resUSer, err := clientUser.CreateUserBySystem(ctx, &users_proto.RequestCreateUserBySystem{
-		Nickname:      request.Nickname,
-		Email:         request.Email,
-		Password:      request.Password,
-		FullPathPhoto: "",
-		Name:          "BJungle",
-		Lastname:      "BJungle",
-		IdType:        6,
-		IdNumber:      "75840278",
-		Cellphone:     "+57310000000",
-		BirthDate:     time.Now().Format("2006-01-02T15:04:05.000Z"),
-	})
-	if err != nil {
-		logger.Error.Printf("error creando usuario: %s", err)
-		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-		return res, err
-	}
-
-	if resUSer == nil {
-		logger.Error.Printf("error creando usuario: %s", err)
-		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-		return res, err
-	}
-
-	if resUSer.Error {
-		logger.Error.Printf(resUSer.Msg)
-		res.Code, res.Type, res.Msg = msg.GetByCode(int(resUSer.Code), h.DBMg, h.TxID)
-		return res, fmt.Errorf(resUSer.Msg)
-	}
-
-	user := resUSer.Data
-
 	bkTemp, code, err := srvBc.SrvBlocksTmp.CreateBlockTmp(1, time.Now())
 	if err != nil {
 		logger.Error.Printf("couldn't create block tmp: %v", err)
@@ -307,7 +273,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 	var walletsMains []*mine_proto.WalletMain
 
 	for i := 0; i < int(request.WalletsEmmit); i++ {
-		resWallet, err := clientWallet.CreateWalletBySystem(ctx, &wallet_proto.RqCreateWalletBySystem{IdentityNumber: user.IdNumber})
+		resWallet, err := clientWallet.CreateWallet(ctx, &wallet_proto.RequestCreateWallet{IdentityNumber: request.IdentityNumber})
 		if err != nil {
 			logger.Error.Printf("error creando wallet: %s", err)
 			res.Code, res.Type, res.Msg = msg.GetByCode(3, h.DBMg, h.TxID)
@@ -332,7 +298,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 			Id:       uuid.New().String(),
 			IdWallet: wallet.Id,
 			Amount:   0,
-			IdUser:   user.Id,
+			IdUser:   request.UserId,
 		})
 		if err != nil {
 			logger.Error.Printf("error creando cuenta: %s", err)
@@ -350,28 +316,6 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 			logger.Error.Printf(resAccount.Msg)
 			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
 			return res, fmt.Errorf(resAccount.Msg)
-		}
-
-		resUserWallet, err := clientUser.CreateUserWallet(ctx, &users_proto.RqCreateUserWallet{
-			UserId:   user.Id,
-			WalletId: wallet.Id,
-		})
-		if err != nil {
-			logger.Error.Printf("couldn't create user wallet: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, err
-		}
-
-		if resUserWallet == nil {
-			logger.Error.Printf("couldn't create user wallet")
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, fmt.Errorf("couldn't create user wallet")
-		}
-
-		if resUserWallet.Error {
-			logger.Error.Printf(resUserWallet.Msg)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, fmt.Errorf(resUserWallet.Msg)
 		}
 
 		resTxt, err := clientTxt.CreateTransactionBySystem(ctx, &transactions_proto.RqCreateTransactionBySystem{
@@ -403,7 +347,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 		resAmount, err := clientAccount.SetAmountToAccounting(ctx, &accounting_proto.RequestSetAmountToAccounting{
 			WalletId: wallet.Id,
 			Amount:   request.TokensEmmit,
-			IdUser:   user.Id,
+			IdUser:   request.UserId,
 		})
 		if err != nil {
 			logger.Error.Printf("error asiganando los acais a la cuenta: %s", err)
@@ -462,7 +406,8 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 		return res, err
 	}
 
-	_, code, err = srvBc.SrvBlocks.CreateBlock(bkTemp.ID, string(tsBytes), int64(nonce), e.App.Difficulty, user.Id, time.Now(), bkTemp.Timestamp, hs, "genesis")
+	_, code, err = srvBc.SrvBlocks.CreateBlock(bkTemp.ID, string(tsBytes), int64(nonce), e.App.Difficulty, request.UserId,
+		time.Now(), bkTemp.Timestamp, hs, "genesis")
 	if err != nil {
 		logger.Error.Printf("couldn't CreateBlock: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(code, h.DBMg, h.TxID)
@@ -478,7 +423,7 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 
 	res.Error = false
 	res.Data = &mine_proto.Data{
-		UserId:      user.Id,
+		UserId:      request.UserId,
 		WalletsMain: walletsMains,
 	}
 	res.Code, res.Type, res.Msg = msg.GetByCode(29, h.DBMg, h.TxID)

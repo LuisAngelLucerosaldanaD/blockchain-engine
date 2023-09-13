@@ -41,11 +41,10 @@ message MineBlockResponse {
 
 message RequestGenerateGenesis {
   string key_genesis = 1;
-  string password = 2;
-  string nickname = 3;
-  string email = 4;
-  double tokens_emmit = 5;
-  int32  wallets_emmit = 6;
+  string userId = 2;
+  string identity_number = 3;
+  double tokens_emmit = 4;
+  int32  wallets_emmit = 5;
 }
 
 message ResponseGenerateGenesis {
