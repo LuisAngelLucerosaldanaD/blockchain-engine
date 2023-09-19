@@ -44,7 +44,6 @@ message RequestGenerateGenesis {
   string userId = 2;
   string identity_number = 3;
   double tokens_emmit = 4;
-  int32  wallets_emmit = 5;
 }
 
 message ResponseGenerateGenesis {

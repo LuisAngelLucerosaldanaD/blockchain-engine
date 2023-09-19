@@ -272,103 +272,101 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 
 	var walletsMains []*mine_proto.WalletMain
 
-	for i := 0; i < int(request.WalletsEmmit); i++ {
-		resWallet, err := clientWallet.CreateWallet(ctx, &wallet_proto.RequestCreateWallet{IdentityNumber: request.IdentityNumber})
-		if err != nil {
-			logger.Error.Printf("error creando wallet: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(3, h.DBMg, h.TxID)
-			return res, err
-		}
-
-		if resWallet == nil {
-			logger.Error.Printf("error creando wallet: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(3, h.DBMg, h.TxID)
-			return res, fmt.Errorf("error creando wallet")
-		}
-
-		if resWallet.Error {
-			logger.Error.Printf(resWallet.Msg)
-			res.Code, res.Type, res.Msg = msg.GetByCode(int(resWallet.Code), h.DBMg, h.TxID)
-			return res, fmt.Errorf(resWallet.Msg)
-		}
-
-		wallet := resWallet.Data
-
-		resAccount, err := clientAccount.CreateAccounting(ctx, &accounting_proto.RequestCreateAccounting{
-			Id:       uuid.New().String(),
-			IdWallet: wallet.Id,
-			Amount:   0,
-			IdUser:   request.UserId,
-		})
-		if err != nil {
-			logger.Error.Printf("error creando cuenta: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, err
-		}
-
-		if resAccount == nil {
-			logger.Error.Printf("error creando cuenta: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, fmt.Errorf("error creando cuenta")
-		}
-
-		if resAccount.Error {
-			logger.Error.Printf(resAccount.Msg)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, fmt.Errorf(resAccount.Msg)
-		}
-
-		resTxt, err := clientTxt.CreateTransactionBySystem(ctx, &transactions_proto.RqCreateTransactionBySystem{
-			WalletFrom: request.KeyGenesis,
-			WalletTo:   wallet.Id,
-			Amount:     request.TokensEmmit,
-			TypeId:     18,
-			Data:       fmt.Sprintf(dataJson(), wallet.Id, request.TokensEmmit),
-			BlockId:    bkTemp.ID,
-		})
-		if err != nil {
-			logger.Error.Printf("error creando transaccion: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, err
-		}
-
-		if resTxt == nil {
-			logger.Error.Printf("error creando transaccion: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, fmt.Errorf("error creando transaccion")
-		}
-
-		if resTxt.Error {
-			logger.Error.Printf(resTxt.Msg)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, fmt.Errorf(resTxt.Msg)
-		}
-
-		resAmount, err := clientAccount.SetAmountToAccounting(ctx, &accounting_proto.RequestSetAmountToAccounting{
-			WalletId: wallet.Id,
-			Amount:   request.TokensEmmit,
-			IdUser:   request.UserId,
-		})
-		if err != nil {
-			logger.Error.Printf("error asiganando los acais a la cuenta: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, err
-		}
-
-		if resAmount == nil {
-			logger.Error.Printf("error asiganando los acais a la cuenta: %s", err)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, fmt.Errorf("error asiganando los acais a la cuenta")
-		}
-
-		if resAmount.Error {
-			logger.Error.Printf(resAmount.Msg)
-			res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
-			return res, fmt.Errorf(resAmount.Msg)
-		}
-
-		walletsMains = append(walletsMains, &mine_proto.WalletMain{Id: wallet.Id, Mnemonic: wallet.Mnemonic})
+	resWallet, err := clientWallet.CreateWallet(ctx, &wallet_proto.RequestCreateWallet{IdentityNumber: request.IdentityNumber})
+	if err != nil {
+		logger.Error.Printf("error creando wallet: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(3, h.DBMg, h.TxID)
+		return res, err
 	}
+
+	if resWallet == nil {
+		logger.Error.Printf("error creando wallet: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(3, h.DBMg, h.TxID)
+		return res, fmt.Errorf("error creando wallet")
+	}
+
+	if resWallet.Error {
+		logger.Error.Printf(resWallet.Msg)
+		res.Code, res.Type, res.Msg = msg.GetByCode(int(resWallet.Code), h.DBMg, h.TxID)
+		return res, fmt.Errorf(resWallet.Msg)
+	}
+
+	wallet := resWallet.Data
+
+	resAccount, err := clientAccount.CreateAccounting(ctx, &accounting_proto.RequestCreateAccounting{
+		Id:       uuid.New().String(),
+		IdWallet: wallet.Id,
+		Amount:   0,
+		IdUser:   request.UserId,
+	})
+	if err != nil {
+		logger.Error.Printf("error creando cuenta: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	if resAccount == nil {
+		logger.Error.Printf("error creando cuenta: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, fmt.Errorf("error creando cuenta")
+	}
+
+	if resAccount.Error {
+		logger.Error.Printf(resAccount.Msg)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, fmt.Errorf(resAccount.Msg)
+	}
+
+	resTxt, err := clientTxt.CreateTransactionBySystem(ctx, &transactions_proto.RqCreateTransactionBySystem{
+		WalletFrom: request.KeyGenesis,
+		WalletTo:   wallet.Id,
+		Amount:     request.TokensEmmit,
+		TypeId:     18,
+		Data:       fmt.Sprintf(dataJson(), wallet.Id, request.TokensEmmit),
+		BlockId:    bkTemp.ID,
+	})
+	if err != nil {
+		logger.Error.Printf("error creando transaccion: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	if resTxt == nil {
+		logger.Error.Printf("error creando transaccion: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, fmt.Errorf("error creando transaccion")
+	}
+
+	if resTxt.Error {
+		logger.Error.Printf(resTxt.Msg)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, fmt.Errorf(resTxt.Msg)
+	}
+
+	resAmount, err := clientAccount.SetAmountToAccounting(ctx, &accounting_proto.RequestSetAmountToAccounting{
+		WalletId: wallet.Id,
+		Amount:   request.TokensEmmit,
+		IdUser:   request.UserId,
+	})
+	if err != nil {
+		logger.Error.Printf("error asiganando los acais a la cuenta: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, err
+	}
+
+	if resAmount == nil {
+		logger.Error.Printf("error asiganando los acais a la cuenta: %s", err)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, fmt.Errorf("error asiganando los acais a la cuenta")
+	}
+
+	if resAmount.Error {
+		logger.Error.Printf(resAmount.Msg)
+		res.Code, res.Type, res.Msg = msg.GetByCode(22, h.DBMg, h.TxID)
+		return res, fmt.Errorf(resAmount.Msg)
+	}
+
+	walletsMains = append(walletsMains, &mine_proto.WalletMain{Id: wallet.Id, Mnemonic: wallet.Mnemonic})
 
 	_, code, err = srvBc.SrvBlocksTmp.UpdateBlockTmp(bkTemp.ID, 2)
 	if err != nil {
@@ -377,26 +375,26 @@ func (h *HandlerMine) GenerateBlockGenesis(ctx context.Context, request *mine_pr
 		return res, err
 	}
 
-	resTxt, err := clientTxt.GetTransactionsByBlockId(ctx, &transactions_proto.RqGetTransactionByBlock{BlockId: bkTemp.ID})
+	resAllTxt, err := clientTxt.GetTransactionsByBlockId(ctx, &transactions_proto.RqGetTransactionByBlock{BlockId: bkTemp.ID})
 	if err != nil {
 		logger.Error.Printf("couldn't get transactions by block id: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
 		return res, err
 	}
 
-	if resTxt == nil {
+	if resAllTxt == nil {
 		logger.Error.Printf("couldn't get transactions by block id: %v", err)
 		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
 		return res, fmt.Errorf("couldn't get transactions by block id")
 	}
 
-	if resTxt.Error {
-		logger.Error.Printf(resTxt.Msg)
+	if resAllTxt.Error {
+		logger.Error.Printf(resAllTxt.Msg)
 		res.Code, res.Type, res.Msg = msg.GetByCode(70, h.DBMg, h.TxID)
-		return res, fmt.Errorf(resTxt.Msg)
+		return res, fmt.Errorf(resAllTxt.Msg)
 	}
 
-	tsBytes, _ := json.Marshal(resTxt.Data)
+	tsBytes, _ := json.Marshal(resAllTxt.Data)
 
 	timeStamp := []byte(strconv.FormatInt(bkTemp.Timestamp.Unix(), 10))
 	hs, nonce, err := hash.GenerateHashToMineBlock(timeStamp, tsBytes, nil, e.App.Difficulty)
